@@ -9,19 +9,44 @@ const WorkExperience = () => {
     setResumeData,
   } = useContext(ResumeContext);
   const [activeField, setActiveField] = React.useState(null);
+  const [speechOutput, setSpeechOutput] = React.useState({});
 
   const handleSpeechResult = (transcript, fieldName) => {
     const [field, index] = fieldName.split('-');
+    setSpeechOutput(prev => ({ ...prev, [index]: transcript }));
     const newWorkExperience = [...resumeData.workExperience];
     newWorkExperience[parseInt(index)][field] = transcript;
     setResumeData({ ...resumeData, workExperience: newWorkExperience });
     setActiveField(null);
   };
 
+  const handleSectionSpeechResult = (transcript, sectionType) => {
+    setSpeechOutput(prev => ({ ...prev, section: transcript }));
+    if (sectionType === 'Work Experience') {
+      // For work experience, we could add parsing logic here if needed
+      // For now, just store the transcript
+      setActiveField(null);
+    }
+  };
   const toggleSpeech = (fieldName, isActive) => {
     setActiveField(isActive ? fieldName : null);
   };
 
+  const clearSpeechOutput = (index = null) => {
+    if (index !== null) {
+      setSpeechOutput(prev => {
+        const newOutput = { ...prev };
+        delete newOutput[index];
+        return newOutput;
+      });
+    } else {
+      setSpeechOutput(prev => {
+        const newOutput = { ...prev };
+        delete newOutput.section;
+        return newOutput;
+      });
+    }
+  };
   const handleWorkExperience = (e, index) => {
     const newworkExperience = [...resumeData.workExperience];
     newworkExperience[index][e.target.name] = e.target.value;
@@ -50,6 +75,12 @@ const WorkExperience = () => {
     newworkExperience[index] = newworkExperience[newworkExperience.length - 1];
     newworkExperience.pop();
     setResumeData({ ...resumeData, workExperience: newworkExperience });
+    // Clear speech output for removed entry
+    setSpeechOutput(prev => {
+      const newOutput = { ...prev };
+      delete newOutput[index];
+      return newOutput;
+    });
   };
 
   return (
@@ -61,10 +92,61 @@ const WorkExperience = () => {
           targetField={activeField}
           isActive={activeField !== null}
           onToggle={(isActive) => toggleSpeech(activeField, isActive)}
+          sectionType="Work Experience"
+          onSectionResult={handleSectionSpeechResult}
         />
       </div>
+      
+      {/* Speech Output Box for Section */}
+      {speechOutput.section && (
+        <div className="mb-4 p-3 bg-slate-700/50 border border-slate-600/30 rounded-lg">
+          <div className="flex items-center justify-between mb-2">
+            <h3 className="text-sm font-medium text-gray-300">Speech Recognition Output:</h3>
+            <button
+              type="button"
+              onClick={() => clearSpeechOutput()}
+              className="text-xs text-gray-400 hover:text-gray-200 transition-colors"
+            >
+              Clear
+            </button>
+          </div>
+          <p className="text-sm text-gray-200 bg-slate-800/50 p-2 rounded border border-slate-600/20">
+            "{speechOutput.section}"
+          </p>
+        </div>
+      )}
+      
       {resumeData.workExperience.map((workExperience, index) => (
         <div key={index} className="f-col">
+          <div className="flex items-center justify-between mb-2">
+            <h3 className="text-sm font-medium text-gray-300">Work Experience Entry {index + 1}</h3>
+            <SpeechToText 
+              onResult={handleSpeechResult}
+              targetField={activeField}
+              isActive={activeField !== null}
+              onToggle={(isActive) => toggleSpeech(activeField, isActive)}
+            />
+          </div>
+          
+          {/* Speech Output Box for Individual Entry */}
+          {speechOutput[index] && (
+            <div className="mb-4 p-3 bg-slate-700/50 border border-slate-600/30 rounded-lg">
+              <div className="flex items-center justify-between mb-2">
+                <h4 className="text-sm font-medium text-gray-300">Speech Recognition Output:</h4>
+                <button
+                  type="button"
+                  onClick={() => clearSpeechOutput(index)}
+                  className="text-xs text-gray-400 hover:text-gray-200 transition-colors"
+                >
+                  Clear
+                </button>
+              </div>
+              <p className="text-sm text-gray-200 bg-slate-800/50 p-2 rounded border border-slate-600/20">
+                "{speechOutput[index]}"
+              </p>
+            </div>
+          )}
+          
           <input
             type="text"
             placeholder="Company"

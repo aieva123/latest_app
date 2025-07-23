@@ -7,10 +7,11 @@ import { parseEducation } from "../../utils/speechParser";
 const Education = () => {
     const { resumeData, setResumeData} = useContext(ResumeContext);
     const [activeField, setActiveField] = React.useState(null);
-    const [speechOutput, setSpeechOutput] = React.useState('');
+    const [speechOutput, setSpeechOutput] = React.useState({});
 
     const handleSpeechResult = (transcript, fieldName) => {
-      setSpeechOutput(transcript);
+      const [field, index] = fieldName.split('-');
+      setSpeechOutput(prev => ({ ...prev, [index]: transcript }));
       const [field, index] = fieldName.split('-');
       const newEducation = [...resumeData.education];
       newEducation[parseInt(index)][field] = transcript;
@@ -19,7 +20,7 @@ const Education = () => {
     };
 
     const handleSectionSpeechResult = (transcript, sectionType) => {
-      setSpeechOutput(transcript);
+      setSpeechOutput(prev => ({ ...prev, section: transcript }));
       if (sectionType === 'Education') {
         const parsedData = parseEducation(transcript);
         
@@ -46,8 +47,20 @@ const Education = () => {
       setActiveField(isActive ? fieldName : null);
     };
 
-    const clearSpeechOutput = () => {
-      setSpeechOutput('');
+    const clearSpeechOutput = (index = null) => {
+      if (index !== null) {
+        setSpeechOutput(prev => {
+          const newOutput = { ...prev };
+          delete newOutput[index];
+          return newOutput;
+        });
+      } else {
+        setSpeechOutput(prev => {
+          const newOutput = { ...prev };
+          delete newOutput.section;
+          return newOutput;
+        });
+      }
     };
 
     const handleEducation = (e, index) => {
@@ -71,6 +84,12 @@ const Education = () => {
       newEducation[index] = newEducation[newEducation.length - 1];
       newEducation.pop();
       setResumeData({ ...resumeData, education: newEducation });
+      // Clear speech output for removed entry
+      setSpeechOutput(prev => {
+        const newOutput = { ...prev };
+        delete newOutput[index];
+        return newOutput;
+      });
     };
     
     return (
@@ -88,26 +107,55 @@ const Education = () => {
         </div>
         
         {/* Speech Output Box */}
-        {speechOutput && (
+        {speechOutput.section && (
           <div className="mb-4 p-3 bg-slate-700/50 border border-slate-600/30 rounded-lg">
             <div className="flex items-center justify-between mb-2">
               <h3 className="text-sm font-medium text-gray-300">Speech Recognition Output:</h3>
               <button
                 type="button"
-                onClick={clearSpeechOutput}
+                onClick={() => clearSpeechOutput()}
                 className="text-xs text-gray-400 hover:text-gray-200 transition-colors"
               >
                 Clear
               </button>
             </div>
             <p className="text-sm text-gray-200 bg-slate-800/50 p-2 rounded border border-slate-600/20">
-              "{speechOutput}"
+              "{speechOutput.section}"
             </p>
           </div>
         )}
 
         {resumeData.education.map((education, index) => (
           <div key={index} className="f-col">
+            <div className="flex items-center justify-between mb-2">
+              <h3 className="text-sm font-medium text-gray-300">Education Entry {index + 1}</h3>
+              <SpeechToText 
+                onResult={handleSpeechResult}
+                targetField={activeField}
+                isActive={activeField !== null}
+                onToggle={(isActive) => toggleSpeech(activeField, isActive)}
+              />
+            </div>
+            
+            {/* Speech Output Box for Individual Entry */}
+            {speechOutput[index] && (
+              <div className="mb-4 p-3 bg-slate-700/50 border border-slate-600/30 rounded-lg">
+                <div className="flex items-center justify-between mb-2">
+                  <h4 className="text-sm font-medium text-gray-300">Speech Recognition Output:</h4>
+                  <button
+                    type="button"
+                    onClick={() => clearSpeechOutput(index)}
+                    className="text-xs text-gray-400 hover:text-gray-200 transition-colors"
+                  >
+                    Clear
+                  </button>
+                </div>
+                <p className="text-sm text-gray-200 bg-slate-800/50 p-2 rounded border border-slate-600/20">
+                  "{speechOutput[index]}"
+                </p>
+              </div>
+            )}
+            
             <input
               type="text"
               placeholder="School"
